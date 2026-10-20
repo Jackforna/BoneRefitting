@@ -310,11 +310,15 @@ def colorize_by_fracture_mask(pcd, fracture_mask, base_color=(0.6, 0.6, 0.6), fr
 
 
 def main():
-    raw_dir = "data/raw"
-    processed_dir = "data/processed"
+    raw_dir = "data5/raw"
+    processed_dir = "data5/processed"
     os.makedirs(processed_dir, exist_ok=True)
 
-    file_names = ["1776a.obj", "2480.obj"]
+    #file_names = ["1776a.obj", "2480.obj"] # esempio 1
+    #file_names = ["2347.obj", "3045.obj"] # esempio 2
+    #file_names = ["D1550.obj", "D7428.obj"] # esempio 3
+    #file_names = ["1960.obj", "N1248.obj"] # esempio 4
+    file_names = ["osso2_A.obj", "osso2_B.obj"] # esempio 5
     path_a = os.path.join(raw_dir, file_names[0])
     path_b = os.path.join(raw_dir, file_names[1])
 

@@ -76,6 +76,26 @@ class SalvaGrafico3DCallback(BaseCallback):
 
         return True
 
+    def get_records(self):
+        records = {
+            "cb_best_chamfer": float(self.best_chamfer),
+            "cb_best_norm": float(self.best_norm),
+            "cb_best_surface": float(self.best_surface),
+        }
+        if self.best_frag_a is not None:
+            records["cb_best_frag_a"] = self.best_frag_a
+            records["cb_best_frag_b"] = self.best_frag_b
+        return records
+
+    def set_records(self, records):
+        if "cb_best_chamfer" in records:
+            self.best_chamfer = float(records["cb_best_chamfer"])
+            self.best_norm = float(records["cb_best_norm"])
+            self.best_surface = float(records["cb_best_surface"])
+        if "cb_best_frag_a" in records:
+            self.best_frag_a = np.array(records["cb_best_frag_a"])
+            self.best_frag_b = np.array(records["cb_best_frag_b"])
+
     def _save_3d_snapshot(self, step, tag="frame", pts_a=None, pts_b=None, chamfer=0.0, normal=0.0, surface=0.0):
         try:
             if pts_a is None or pts_b is None:

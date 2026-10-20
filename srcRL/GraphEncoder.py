@@ -58,4 +58,4 @@ class GraphEncoder(
         # Concateniamo per ottenere un vettore rappresentativo ricco (dimensione: out_channels * 2)
         out = torch.cat([x_mean, x_max], dim=-1)
 
-        return x
+        return out

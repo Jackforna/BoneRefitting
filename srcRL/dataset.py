@@ -48,8 +48,8 @@ class BoneFragmentsDataset(Dataset):
     def __getitem__(self, idx):
         file_a, file_b = self.pairs[idx]
         
-        raw_a = torch.load(os.path.join(self.processed_dir, file_a), map_location='cpu')
-        raw_b = torch.load(os.path.join(self.processed_dir, file_b), map_location='cpu')
+        raw_a = torch.load(os.path.join(self.processed_dir, file_a), map_location='cpu', weights_only=False)
+        raw_b = torch.load(os.path.join(self.processed_dir, file_b), map_location='cpu', weights_only=False)
         
         # Convertiamo i tensori grezzi in grafi PyG pronti per il GraphEncoder
         graph_a = self._to_pyg_data(raw_a)
