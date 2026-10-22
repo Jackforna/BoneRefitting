@@ -8,6 +8,18 @@ from sklearn.neighbors import NearestNeighbors, KDTree
 from sklearn.cluster import DBSCAN
 from torch_geometric.data import Data
 
+try:
+    from srcRL.fracture_mask_closed import extract_fracture_mask_closed
+except ImportError:   # lanciato come python srcRL/preprocess.py
+    from fracture_mask_closed import extract_fracture_mask_closed
+
+# Mesh chiuse (senza bordi aperti, es. Fractura): si tolgono i pezzi staccati
+# con meno di questa frazione dei triangoli (residui della scansione) e la
+# maschera viene da fracture_mask_closed.py. Le mesh aperte (scansioni con il
+# bordo della frattura, es. 1776a/2480) restano invariate: sono spesso divise
+# in molti pezzi non saldati che fanno parte della superficie.
+CLOSED_MIN_COMPONENT_FRACTION = 0.01
+
 NUM_POINTS = 2048
 KNN = 16
 K_NEIGHBORS_SCORE = 20
@@ -233,6 +245,16 @@ def load_fragment(obj_path, num_points=NUM_POINTS):
 
     boundary_vertices = extract_boundary_vertex_positions(mesh)
 
+    if boundary_vertices is None:
+        clusters, counts, _ = mesh.cluster_connected_triangles()
+        clusters, counts = np.asarray(clusters), np.asarray(counts)
+        piccoli = counts < CLOSED_MIN_COMPONENT_FRACTION * counts.sum()
+        if piccoli.any():
+            mesh.remove_triangles_by_mask(piccoli[clusters])
+            mesh.remove_unreferenced_vertices()
+            mesh.compute_vertex_normals()
+            print(f"  mesh chiusa: tolti {int(piccoli.sum())} pezzi staccati ({int(counts[piccoli].sum())} triangoli)")
+
     pcd = mesh.sample_points_poisson_disk(number_of_points=num_points)
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=30))
     pcd.orient_normals_consistent_tangent_plane(50)
@@ -240,7 +262,7 @@ def load_fragment(obj_path, num_points=NUM_POINTS):
     points = np.asarray(pcd.points, dtype=np.float32)
     normals = np.asarray(pcd.normals, dtype=np.float32)
 
-    return points, normals, pcd, boundary_vertices
+    return points, normals, pcd, boundary_vertices, mesh
 
 
 def build_graph(points, normals, curvature, fracture_mask, centroid_distance):
@@ -271,8 +293,8 @@ def build_graph(points, normals, curvature, fracture_mask, centroid_distance):
 
 
 def preprocess_pair(path_a, path_b, num_points=NUM_POINTS):
-    points_a, normals_a, pcd_a, boundary_a = load_fragment(path_a, num_points)
-    points_b, normals_b, pcd_b, boundary_b = load_fragment(path_b, num_points)
+    points_a, normals_a, pcd_a, boundary_a, mesh_a = load_fragment(path_a, num_points)
+    points_b, normals_b, pcd_b, boundary_b, mesh_b = load_fragment(path_b, num_points)
 
     joint_points = np.concatenate([points_a, points_b], axis=0)
     centroid = joint_points.mean(axis=0)
@@ -287,8 +309,16 @@ def preprocess_pair(path_a, path_b, num_points=NUM_POINTS):
     boundary_a_norm = (boundary_a - centroid) / (radius + 1e-8) if boundary_a is not None else None
     boundary_b_norm = (boundary_b - centroid) / (radius + 1e-8) if boundary_b is not None else None
 
-    fracture_mask_a, curvature_a = extract_fracture_mask(points_a_norm, normals_a, boundary_a_norm)
-    fracture_mask_b, curvature_b = extract_fracture_mask(points_b_norm, normals_b, boundary_b_norm)
+    def mask_for(points_norm, normals, boundary_norm, mesh):
+        if boundary_norm is not None:
+            return extract_fracture_mask(points_norm, normals, boundary_norm)
+        # mesh chiusa: maschera dalla rugosita' della mesh densa
+        mask, _ = extract_fracture_mask_closed(mesh, points_norm, centroid, radius)
+        _, curvature = compute_roughness_and_curvature(points_norm, normals)
+        return mask, curvature
+
+    fracture_mask_a, curvature_a = mask_for(points_a_norm, normals_a, boundary_a_norm, mesh_a)
+    fracture_mask_b, curvature_b = mask_for(points_b_norm, normals_b, boundary_b_norm, mesh_b)
 
     centroid_dist_a = np.linalg.norm(points_a_norm, axis=1).astype(np.float32)
     centroid_dist_b = np.linalg.norm(points_b_norm, axis=1).astype(np.float32)
@@ -310,15 +340,23 @@ def colorize_by_fracture_mask(pcd, fracture_mask, base_color=(0.6, 0.6, 0.6), fr
 
 
 def main():
-    raw_dir = "data5/raw"
-    processed_dir = "data5/processed"
+    # Uso: python srcRL/preprocess.py [A.obj B.obj] [--raw data/raw] [--out data/processed] [--no-viewer]
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("files", nargs="*", default=["1776a.obj", "2480.obj"],
+                        help="i due .obj in --raw (A fisso, B mobile)")
+    parser.add_argument("--raw", default="data/raw")
+    parser.add_argument("--out", default="data/processed")
+    parser.add_argument("--no-viewer", action="store_true", help="non apre la finestra delle maschere")
+    args = parser.parse_args()
+    if len(args.files) != 2:
+        parser.error("servono esattamente due file .obj")
+
+    raw_dir = args.raw
+    processed_dir = args.out
     os.makedirs(processed_dir, exist_ok=True)
 
-    #file_names = ["1776a.obj", "2480.obj"] # esempio 1
-    #file_names = ["2347.obj", "3045.obj"] # esempio 2
-    #file_names = ["D1550.obj", "D7428.obj"] # esempio 3
-    #file_names = ["1960.obj", "N1248.obj"] # esempio 4
-    file_names = ["osso2_A.obj", "osso2_B.obj"] # esempio 5
+    file_names = args.files
     path_a = os.path.join(raw_dir, file_names[0])
     path_b = os.path.join(raw_dir, file_names[1])
 
@@ -343,6 +381,8 @@ def main():
     colorize_by_fracture_mask(pcd_a, fracture_mask_a)
     colorize_by_fracture_mask(pcd_b, fracture_mask_b)
 
+    if args.no_viewer:
+        return
     o3d.visualization.draw_geometries(
         [pcd_a, pcd_b],
         window_name="Fracture mask (rosso = frattura stimata)",
