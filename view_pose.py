@@ -10,7 +10,6 @@ punti, Q per chiudere.
 Uso:
     python view_pose.py                      # rank 0 di runs/start_search/start_poses.npz
     python view_pose.py --rank 1
-    python view_pose.py --rank 0 --staccata  # come parte l'RL: B staccato di 15 mm
     python view_pose.py --file output_3d/infer_best.ply
 """
 import argparse
