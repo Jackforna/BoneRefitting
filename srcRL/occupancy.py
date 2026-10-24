@@ -124,7 +124,7 @@ class OccupancyGrid:
         return self.winding(points) > threshold
 
 
-def main(processed_dir="data2/processed", raw_dir="data2/raw", out_dir="data2/processed/occupancy"):
+def main(processed_dir="data3/processed", raw_dir="data3/raw", out_dir="data3/processed/occupancy"):
     with open(os.path.join(processed_dir, "normalization.json")) as f:
         norm = json.load(f)
 

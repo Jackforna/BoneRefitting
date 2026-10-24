@@ -37,7 +37,7 @@ class ArchaeologicalIncastroEnv(gym.Env):
 
     def __init__(self, dataset, encoder=None, max_steps=120, max_allowed_chamfer=100.0,
                  obs_mode="interface", n_iface_points=128, device=None,
-                 occupancy_dir="data5/processed/occupancy", shaping_gamma=1.0,
+                 occupancy_dir="data3/processed/occupancy", shaping_gamma=1.0,
                  start_mode="tip_aligned", start_rolls=None, start_face=None,
                  start_poses=None, start_rank=0):
         super(ArchaeologicalIncastroEnv, self).__init__()
