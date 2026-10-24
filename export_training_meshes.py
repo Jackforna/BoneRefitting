@@ -9,7 +9,7 @@ un altro pezzo). I pezzetti staccati (meno dell'1% dei triangoli, es.
 marcatori) vengono tolti. Il campo shared_faces del file NON viene usato.
 
 Uso:
-    python export_training_meshes.py --h5 fractura/bone_real.hdf5 --out data/training_meshes.npz
+    python export_training_meshes.py --h5 fractura/bone_real.hdf5 --out fractura/data/training_meshes.npz
 """
 import argparse
 import os
@@ -75,7 +75,7 @@ def alleggerisci(v, f, n_triangoli):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--h5", required=True)
-    parser.add_argument("--out", default=os.path.join("data", "training_meshes.npz"))
+    parser.add_argument("--out", default=os.path.join("fractura/data", "training_meshes.npz"))
     parser.add_argument("--triangoli", type=int, default=30000, help="triangoli per pezzo dopo la semplificazione")
     args = parser.parse_args()
 
