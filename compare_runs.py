@@ -25,8 +25,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from env import ArchaeologicalIncastroEnv
 from infer_rl import gt_distance, run_from_roll, save_ply
-from srcRL.dataset import BoneFragmentsDataset
-from trainRL import load_start_poses
+from src.dataset import BoneFragmentsDataset
+from RL_attempt.trainRL import load_start_poses
 
 
 def latest_model(run_dir):

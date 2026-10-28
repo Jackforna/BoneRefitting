@@ -17,7 +17,7 @@ Uso:
                        --vecnorm checkpoints/ppo_incastro_vecnormalize_300000_steps.pkl
 
 --confronta-gt stampa SOLO A FINE ESECUZIONE la distanza dalla GT
-calibrata (srcRL/ground_truth.py): non influenza in alcun modo la scelta.
+calibrata (src/ground_truth.py): non influenza in alcun modo la scelta.
 """
 import argparse
 import os
@@ -28,7 +28,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from env import ArchaeologicalIncastroEnv
-from srcRL.dataset import BoneFragmentsDataset
+from src.dataset import BoneFragmentsDataset
 
 
 def save_ply(path, pts_a, pts_b):
@@ -77,7 +77,7 @@ def run_from_roll(model, vecnorm, env, roll_deg, max_steps, deterministic=True, 
 
 def gt_distance(env, dataset, pose_b):
     """Solo per verifica a posteriori: distanza dalla GT calibrata."""
-    from srcRL.ground_truth import T_GT, ruota_asse
+    from RL_attempt.ground_truth import T_GT, ruota_asse
 
     a_full, b_full, _ = dataset[0]
     a = (a_full.x if hasattr(a_full, "x") else a_full)[:, :3].float()
@@ -124,7 +124,7 @@ def main():
     obs_mode = "interface" if hasattr(model.observation_space, "spaces") else "geom"
     start_poses = None
     if args.searched:
-        from trainRL import load_start_poses
+        from RL_attempt.trainRL import load_start_poses
         start_poses = load_start_poses(args.start_poses)
     env = ArchaeologicalIncastroEnv(
         dataset=dataset, max_steps=args.max_steps, obs_mode=obs_mode,

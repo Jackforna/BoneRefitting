@@ -20,8 +20,7 @@ data/processed contiene altre ossa. Nessuna GT nella scelta:
 Uso:
     python search_start.py
     python search_start.py --workers 4 --iters 2500 --roll-step 15
-    python search_start.py --processed data2/processed --out runs2   # un esempio per cartella
-    python search_start.py --confronta-gt      # solo verifica, a posteriori
+    python search_start.py --processed examples/data1/processed --out results/runs1
 """
 import argparse
 import math
@@ -39,14 +38,14 @@ _w_ext = 0.0
 EXT_CONTACT_DIST = 2.0   # mm (unita' dell'ambiente): punti "a contatto" per il termine sulle superfici esterne
 
 
-def _init_worker(processed_dir="data3/processed", w_tip=None, pen_max=None, w_ext=0.0):
+def _init_worker(processed_dir="examples/data1/processed", w_tip=None, pen_max=None, w_ext=0.0):
     """Un ambiente per processo (le ricerche girano in parallelo)."""
     global _env, _n0, _w_ext
     _w_ext = w_ext
     warnings.filterwarnings("ignore")
     torch.set_num_threads(1)
     from env import ArchaeologicalIncastroEnv
-    from srcRL.dataset import BoneFragmentsDataset
+    from src.dataset import BoneFragmentsDataset
 
     dataset = BoneFragmentsDataset(processed_dir=processed_dir)
     _env = ArchaeologicalIncastroEnv(dataset=dataset, device="cpu", start_mode="tip_aligned",
@@ -181,10 +180,9 @@ def main():
     parser.add_argument("--peso-esterno", type=float, default=0.0,
                         help="penalita' su Phi per il contatto tra superfici esterne (fuori maschera): "
                              "Phi -= peso * frazione di punti esterni a contatto. 0 = disattivata")
-    parser.add_argument("--processed", default="data3/processed",
+    parser.add_argument("--processed", default="examples/data1/processed",
                         help="cartella dei .pt (e di occupancy/) della coppia di ossa")
-    parser.add_argument("--out", default="runs", help="cartella dei risultati: le pose vanno in <out>/start_search/")
-    parser.add_argument("--confronta-gt", action="store_true", help="stampa la distanza dalla GT (solo verifica)")
+    parser.add_argument("--out", default="results/runs", help="cartella dei risultati: le pose vanno in <out>/start_search/")
     args = parser.parse_args()
 
     offsets = [float(o) for o in args.offsets.split(",")]

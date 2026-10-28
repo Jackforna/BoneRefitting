@@ -8,9 +8,8 @@ trascina per ruotare, rotella per lo zoom, +/- per la dimensione dei
 punti, Q per chiudere.
 
 Uso:
-    python view_pose.py                      # rank 0 di runs/start_search/start_poses.npz
+    python view_pose.py --runs 1                    # rank 0 di results/runs1/start_search/start_poses.npz
     python view_pose.py --rank 1
-    python view_pose.py --file output_3d/infer_best.ply
 """
 import argparse
 import os
@@ -18,7 +17,7 @@ import os
 import numpy as np
 import open3d as o3d
 
-from srcRL.dataset import BoneFragmentsDataset
+from src.dataset import BoneFragmentsDataset
 
 YELLOW, ORANGE = [1.0, 0.75, 0.0], [0.85, 0.35, 0.0]
 CYAN, BLUE = [0.0, 0.65, 1.0], [0.0, 0.2, 0.75]
@@ -39,7 +38,7 @@ def colors_for(mask, base, fracture):
     return colors
 
 
-def pose_clouds(poses_path, rank, processed_dir="data5/processed"):
+def pose_clouds(poses_path, rank, processed_dir="examples/data/processed"):
     data = np.load(poses_path)
     if rank >= len(data["phi"]):
         raise SystemExit(f"rank {rank} non presente: il file contiene {len(data['phi'])} pose")
@@ -71,11 +70,11 @@ def main():
     args = parser.parse_args()
 
 
-    poses = os.path.join(f"runs{args.runs}", "start_search", "start_poses.npz")
+    poses = os.path.join(f"results/runs{args.runs}", "start_search", "start_poses.npz")
     if args.processed == None:
-        processed = os.path.join(f"data{args.runs}", "processed")
+        processed = os.path.join(f"examples/data{args.runs}", "processed")
     else:
-        processed = os.path.join(f"data{args.processed}", "processed")
+        processed = os.path.join(f"examples/data{args.processed}", "processed")
     if not os.path.exists(poses):
         raise SystemExit(f"{args.poses} non trovato: lancia prima python search_start.py")
     geometries, title = pose_clouds(poses, args.rank, processed)

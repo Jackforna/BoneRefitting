@@ -6,9 +6,9 @@ import numpy as np
 import torch.nn.functional as F
 from sklearn.cluster import KMeans
 
-from srcRL.InterfaceEncoder import IFACE_NUM_FEATURES
-from srcRL.occupancy import OccupancyGrid
-from srcRL.roll_sampler import RollSampler
+from RL_attempt.InterfaceEncoder import IFACE_NUM_FEATURES
+from src.occupancy import OccupancyGrid
+from src.roll_sampler import RollSampler
 
 
 class ArchaeologicalIncastroEnv(gym.Env):
@@ -252,7 +252,7 @@ class ArchaeologicalIncastroEnv(gym.Env):
         # Valori misurati: GT ~ +21, posa orientata ma a 20 mm ~ -23,
         # a 40 mm ~ -52.
         self.W_TIP = 10.0
-        self.W_NORMAL = 10.0
+        self.W_NORMAL = 0.0 #10.0 se si vuole mettere
         self.W_COVERAGE = 100.0
         self.W_CHAMFER = 1.0
         self.CHAMFER_POTENTIAL_CAP = 60.0
