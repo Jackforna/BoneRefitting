@@ -7,10 +7,10 @@ import numpy as np
 from stable_baselines3.common.callbacks import BaseCallback, CallbackList, CheckpointCallback
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
-from srcRL.dataset import BoneFragmentsDataset
+from src.dataset import BoneFragmentsDataset
 from env import ArchaeologicalIncastroEnv
-from srcRL.callbacks import SalvaGrafico3DCallback
-from srcRL.InterfaceEncoder import InterfaceFeaturesExtractor
+from callbacks import SalvaGrafico3DCallback
+from InterfaceEncoder import InterfaceFeaturesExtractor
 import tqdm.std
 
 tqdm.std.tqdm.__del__ = lambda self: None
