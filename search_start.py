@@ -158,6 +158,43 @@ def _climb(task):
     return {"roll": roll_deg, "offset": offset_mm, "sense": sense, "tilt": tilt_deg, "azim": azim_deg, "phi": float(phi), "metrics": metrics,
             "R": R.numpy(), "t": t.numpy(), "pose": pb.numpy(), "seconds": time.time() - t0}
 
+def _carica_gt(processed_dir):
+    """
+    GT di B (examples/dataN/gt_B.npy, punti di B nella posa di incastro nelle
+    coordinate originali di A) portata nelle unita' dell'ambiente.
+    None se il file non c'e'.
+    """
+    import json
+    gt_path = os.path.join(os.path.dirname(os.path.normpath(processed_dir)), "gt_B.npy")
+    if not os.path.exists(gt_path):
+        return None, gt_path
+    with open(os.path.join(processed_dir, "normalization.json")) as f:
+        norm = json.load(f)
+    gt = np.load(gt_path).astype(np.float64)
+    return (gt - np.asarray(norm["centroid"])) / norm["radius"] * 70.0, gt_path
+
+
+def _distanza_gt(pose_b, gt):
+    """Distanza media dei punti (mm), distanza dei centroidi (mm) e angolo residuo (gradi)."""
+    from scipy.spatial import cKDTree
+    import open3d as o3d
+
+    pose = np.asarray(pose_b, dtype=np.float64)
+    media = float(cKDTree(gt).query(pose)[0].mean())
+    centroidi = float(np.linalg.norm(pose.mean(0) - gt.mean(0)))
+
+    # angolo: rotazione che ICP deve ancora fare per portare la posa sulla GT
+    src, dst = o3d.geometry.PointCloud(), o3d.geometry.PointCloud()
+    src.points = o3d.utility.Vector3dVector(pose)
+    dst.points = o3d.utility.Vector3dVector(gt)
+    reg = o3d.pipelines.registration.registration_icp(
+        src, dst, max(5.0, 2 * media), np.eye(4),
+        o3d.pipelines.registration.TransformationEstimationPointToPoint(),
+        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=200))
+    R = reg.transformation[:3, :3]
+    angolo = float(np.degrees(np.arccos(np.clip((np.trace(R) - 1) / 2, -1, 1))))
+    return media, centroidi, angolo
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -242,11 +279,15 @@ def main():
           f"Visualizzazione: python view_pose.py --runs {args.out}")
 
     if args.confronta_gt:
-        from RL_attempt.infer_rl import gt_distance
-        print("\n[verifica a posteriori] distanza dalla GT:")
+        gt, gt_path = _carica_gt(args.processed)
+        if gt is None:
+            print(f"\nGT non trovata ({gt_path})")
+            return
+        print("\ndistanza dalla GT:")
         for rank, r in enumerate(results[:5]):
-            err, angle = gt_distance(_env, _env.dataset, r["pose"])
-            print(f"  rank {rank}: {err:5.1f} mm, {angle:5.1f} gradi")
+            media, centroidi, angolo = _distanza_gt(r["pose"], gt)
+            print(f"  rank {rank}: distanza media {media:5.1f} mm, centroidi {centroidi:5.1f} mm, "
+                  f"angolo {angolo:5.1f} gradi")
 
 
 if __name__ == "__main__":
