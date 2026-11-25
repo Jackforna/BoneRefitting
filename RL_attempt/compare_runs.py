@@ -24,7 +24,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from env import ArchaeologicalIncastroEnv
-from RL_attempt.infer_rl import gt_distance, run_from_roll, save_ply
+from RL_attempt.infer_rl import load_ppo, run_from_roll, save_ply
 from src.dataset import BoneFragmentsDataset
 from RL_attempt.trainRL import load_start_poses
 
@@ -49,6 +49,7 @@ def main():
     parser.add_argument("--max-steps", type=int, default=500)
     parser.add_argument("--tieni", type=int, default=None, help="quanti run indicare come promossi al turno dopo")
     parser.add_argument("--confronta-gt", action="store_true", help="stampa la distanza dalla GT (solo verifica)")
+    parser.add_argument("--processed", default="examples/data1/processed")
     args = parser.parse_args()
 
     runs = sorted(d for d in glob.glob(os.path.join("runs", "*"))
@@ -58,7 +59,7 @@ def main():
         return
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    dataset = BoneFragmentsDataset(processed_dir="data/processed")
+    dataset = BoneFragmentsDataset(processed_dir=args.processed)
     torch.manual_seed(0)
     results = []
 
@@ -77,7 +78,7 @@ def main():
         if model_path is None:
             print(f"  {run_dir}: nessun modello o checkpoint, saltato")
             continue
-        model = PPO.load(model_path, device=device)
+        model = load_ppo(model_path, device)
         obs_mode = "interface" if hasattr(model.observation_space, "spaces") else "geom"
         start_poses = load_start_poses(config["start_poses"]) if searched else None
         env = ArchaeologicalIncastroEnv(dataset=dataset, max_steps=args.max_steps, obs_mode=obs_mode,
@@ -119,11 +120,15 @@ def main():
         print(f"  {rank}. {label}: Phi={phi:6.2f} chamfer={best['chamfer']:5.2f} surface={best['surface']:.3f}{mark}")
 
     if args.confronta_gt and results:
-        print("\n[verifica a posteriori] distanza dalla GT calibrata:")
+        from search_start import _carica_gt, _distanza_gt
+        gt, gt_path = _carica_gt(args.processed)
+        if gt is None:
+            print(f"\n[verifica a posteriori] GT non trovata ({gt_path})")
+            return
+        print("\n[verifica a posteriori] distanza dalla GT:")
         for phi, label, steps, best, pose, env in results:
-            err, angle = gt_distance(env, dataset, pose)
-            print(f"  {label}: {err:5.1f} mm, {angle:5.1f} gradi")
-
+            media, centroidi, angolo = _distanza_gt(pose, gt)
+            print(f"  {label}: media {media:5.1f} mm, centroidi {centroidi:5.1f} mm, angolo {angolo:5.1f} gradi")
 
 if __name__ == "__main__":
     main()

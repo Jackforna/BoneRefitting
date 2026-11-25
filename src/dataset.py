@@ -5,7 +5,7 @@ from torch_geometric.data import Data
 
 class BoneFragmentsDataset(Dataset):
     """Dataset che carica le nuvole di punti/grafi dal disco"""
-    def __init__(self, processed_dir="data/processed", num_samples=None):
+    def __init__(self, processed_dir="examples/data1/processed", num_samples=None):
         self.processed_dir = processed_dir
         
         all_files = sorted([f for f in os.listdir(processed_dir) if f.endswith('.pt')])

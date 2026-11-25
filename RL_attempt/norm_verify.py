@@ -56,16 +56,16 @@ def estimate_normals(points, k=15):
 # from dataset_file import BoneFragmentsDataset
 # dataset = BoneFragmentsDataset(root_dir="path/ai/tuoi/dati")
 
-cartella_elaborati = "data/processed/train"
+cartella_elaborati = "examples/data1/processed"
 dataset = BoneFragmentsDataset(
-        processed_dir=cartella_elaborati, 
-        num_samples=2000, 
-        max_translation=3.0, 
-        max_rotation=10.0 
+        processed_dir=cartella_elaborati,
+        num_samples=2000,
     )
 
 print("Caricamento del frammento dal dataset...")
 frag_a_full, frag_b_full, _ = dataset[0]
+frag_a_full = frag_a_full.x if hasattr(frag_a_full, "x") else frag_a_full
+frag_b_full = frag_b_full.x if hasattr(frag_b_full, "x") else frag_b_full
 
 # Prendiamo solo i punti XYZ originari (canali 0, 1, 2) che sono corretti al 100%
 frag_a = frag_a_full[:, :3].clone().detach()

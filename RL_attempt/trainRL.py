@@ -9,8 +9,8 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from src.dataset import BoneFragmentsDataset
 from env import ArchaeologicalIncastroEnv
-from callbacks import SalvaGrafico3DCallback
-from InterfaceEncoder import InterfaceFeaturesExtractor
+from RL_attempt.callbacks import SalvaGrafico3DCallback
+from RL_attempt.InterfaceEncoder import InterfaceFeaturesExtractor
 import tqdm.std
 
 tqdm.std.tqdm.__del__ = lambda self: None
@@ -40,14 +40,6 @@ def visualize_best_result(frag_a_np, frag_b_np, chamfer_val, norm_val, save_dir=
     # 3. Salvataggio su disco
     os.makedirs(save_dir, exist_ok=True)
  
-    #path_a = os.path.join(save_dir, f"frammento_a_chamfer{chamfer_val:.2f}.ply")
-    #path_b = os.path.join(save_dir, f"frammento_b_chamfer{chamfer_val:.2f}.ply")
-    #o3d.io.write_point_cloud(path_a, pcd_a, write_ascii=True)
-    #o3d.io.write_point_cloud(path_b, pcd_b, write_ascii=True)
- 
-    # Anche una versione UNITA (i due frammenti nello stesso file,
-    # gia' nella posa relativa corretta) puo' essere comoda per
-    # riaprire il risultato completo in un colpo solo.
     pcd_combined = pcd_a + pcd_b
     path_combined = os.path.join(save_dir, f"incastro_completo_chamfer{chamfer_val:.2f}.ply")
     o3d.io.write_point_cloud(path_combined, pcd_combined, write_ascii=True)
@@ -125,58 +117,30 @@ def load_records(path, env, callback_grafico):
     print(f"🏅 Record ripristinati: Chamfer {env.global_best_chamfer:.4f} mm | "
           f"Normale {env.global_best_normal:.4f} | Surface {env.global_best_surface_matching_ratio:.4f}")
 
-
-# True: l'agente vede metriche geometriche + grafo dell'interfaccia
-# (GNN addestrata dal PPO). False: solo le 16 metriche geometriche,
-# nessun encoder (MlpPolicy). I checkpoint dei due casi non sono
-# intercambiabili: riprendi solo da checkpoint dello stesso tipo.
 USE_ENCODER = True
-
-# Partenza di B a ogni episodio (nessuna usa la GT):
-#  "tip_aligned": punte allineate, roll casuale, B a 15 mm dalla frattura
-#                 di A (come la vecchia partenza T_GT, ma senza GT).
-#  "random":      rotazione completamente casuale.
-# In inferenza usa infer_rl.py, che prova piu' roll e sceglie con Phi.
 START_MODE = "tip_aligned"
-# Roll fissi delle partenze tip_aligned (gradi). Come la vecchia partenza
-# T_GT era una posa fissa, qui ce ne sono 8: il roll giusto dista al massimo
-# 22.5 gradi da uno di questi (la T_GT ne distava 21.7). Gli episodi si
-# concentrano in modo adattivo sui roll che producono il Phi migliore
-# (srcRL/roll_sampler.py, nessuna GT). None = roll continuo uniforme.
 START_ROLLS = [0, 45, 90, 135, 180, 225, 270, 315]
-# Faccia del cubo attorno ad A da cui parte B (START_MODE="cube"):
-# "davanti", "dietro", "destra", "sinistra", "sopra", "sotto".
 START_FACE = None
-# Partenza dalla posa trovata da search_start.py (START_MODE="searched"):
-# file delle pose e posizione in classifica per Phi (0 = la migliore).
-START_POSES_PATH = os.path.join("runs", "start_search", "start_poses.npz")
+START_POSES_PATH = os.path.join("results", "runs1", "start_search", "start_poses.npz")
+PROCESSED_DIR = os.path.join("examples", "data1", "processed")
 START_RANK = 0
 
 GAMMA = 0.997
 TOTAL_TIMESTEPS = 1_000_000
 LEARNING_RATE = 3e-4
 
-# Ripresa da checkpoint: metti il numero di step del checkpoint da cui
-# ripartire (es. 300_000) per caricare
-#   checkpoints/ppo_incastro_<N>_steps.zip
-#   checkpoints/ppo_incastro_vecnormalize_<N>_steps.pkl
-# L'addestramento continua fino a TOTAL_TIMESTEPS complessivi.
-# None = addestramento da zero.
 RESUME_FROM_STEPS = None
 CHECKPOINT_DIR = "checkpoints"
 CHECKPOINT_PREFIX = "ppo_incastro"
 
-# Cartella dei risultati del run (modello finale, statistiche, record,
-# render). "." = cartella del progetto, come prima. Con --roll diventa
-# runs/roll_<R>/ cosi' piu' run possono girare in parallelo.
 OUTPUT_DIR = "."
-SHOW_VIEWER = True   # finestra Open3D a fine addestramento
+SHOW_VIEWER = True
 
 
 def main():
     
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    cartella_elaborati = "data/processed"
+    cartella_elaborati = PROCESSED_DIR
     dataset_reale = BoneFragmentsDataset(
         processed_dir=cartella_elaborati, 
         num_samples=2000,
@@ -361,7 +325,7 @@ def parse_args():
       --no-viewer   non apre la finestra Open3D a fine addestramento
     """
     import argparse
-    global START_ROLLS, START_MODE, START_FACE, START_RANK, TOTAL_TIMESTEPS, RESUME_FROM_STEPS, CHECKPOINT_DIR, OUTPUT_DIR, SHOW_VIEWER
+    global START_ROLLS, START_MODE, START_FACE, START_RANK, TOTAL_TIMESTEPS, RESUME_FROM_STEPS, CHECKPOINT_DIR, OUTPUT_DIR, SHOW_VIEWER, PROCESSED_DIR, START_POSES_PATH
     parser = argparse.ArgumentParser()
     parser.add_argument("--roll", type=float, default=None)
     parser.add_argument("--face", default=None,
@@ -371,8 +335,12 @@ def parse_args():
     parser.add_argument("--no-viewer", action="store_true")
     parser.add_argument("--all-rolls", action="store_true")
     parser.add_argument("--searched", action="store_true")
+    parser.add_argument("--processed", default=PROCESSED_DIR)
+    parser.add_argument("--start-poses", default=START_POSES_PATH)
     parser.add_argument("--rank", type=int, default=0)
     args = parser.parse_args()
+    PROCESSED_DIR = args.processed
+    START_POSES_PATH = args.start_poses
     if args.searched:
         START_MODE = "searched"
         START_RANK = args.rank

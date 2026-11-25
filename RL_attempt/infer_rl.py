@@ -11,13 +11,14 @@ Il roll e' l'unico grado di liberta' che l'agente non riesce a correggere
 una volta che le ossa si toccano: provarne diversi e scegliere con Phi
 sostituisce la vecchia partenza T_GT senza usare la GT.
 
-Uso:
-    python infer_rl.py
-    python infer_rl.py --model checkpoints/ppo_incastro_300000_steps.zip \
-                       --vecnorm checkpoints/ppo_incastro_vecnormalize_300000_steps.pkl
+Uso (dalla cartella principale del progetto):
+    python -m RL_attempt.infer_rl
+    python -m RL_attempt.infer_rl --processed examples/data1/processed --confronta-gt
+    python -m RL_attempt.infer_rl --model RL_attempt/checkpoints/ppo_incastro_200000_steps.zip \
+                                  --vecnorm RL_attempt/checkpoints/ppo_incastro_vecnormalize_200000_steps.pkl
 
 --confronta-gt stampa SOLO A FINE ESECUZIONE la distanza dalla GT
-calibrata (src/ground_truth.py): non influenza in alcun modo la scelta.
+(examples/dataN/gt_B.npy): non influenza in alcun modo la scelta.
 """
 import argparse
 import os
@@ -75,35 +76,30 @@ def run_from_roll(model, vecnorm, env, roll_deg, max_steps, deterministic=True, 
     return best, best_pose
 
 
-def gt_distance(env, dataset, pose_b):
-    """Solo per verifica a posteriori: distanza dalla GT calibrata."""
-    from RL_attempt.ground_truth import T_GT, ruota_asse
-
-    a_full, b_full, _ = dataset[0]
-    a = (a_full.x if hasattr(a_full, "x") else a_full)[:, :3].float()
-    b = (b_full.x if hasattr(b_full, "x") else b_full)[:, :3].float()
-    g = b @ T_GT[:3, :3].T
-    g = g + (a.mean(0) - g.mean(0)) + torch.tensor([0.17, -0.25, 0.20])
-    gt = (ruota_asse(g, 22.0, "y") * 70).numpy()
-    pose = np.asarray(pose_b)
-    pc, qc = gt - gt.mean(0), pose - pose.mean(0)
-    u, _, vt = np.linalg.svd(pc.T @ qc)
-    d = np.sign(np.linalg.det(vt.T @ u.T))
-    R = vt.T @ np.diag([1, 1, d]) @ u.T
-    angle = np.degrees(np.arccos(np.clip((np.trace(R) - 1) / 2, -1, 1)))
-    return float(np.linalg.norm(pose - gt, axis=1).mean()), float(angle)
+def load_ppo(path, device):
+    """
+    Carica un modello PPO. I checkpoint in RL_attempt/checkpoints/ sono stati
+    salvati quando l'encoder stava in srcRL/InterfaceEncoder.py e quel nome e'
+    scritto dentro il file: lo si fa puntare a RL_attempt/InterfaceEncoder.py.
+    """
+    import sys
+    import types
+    import RL_attempt.InterfaceEncoder as interface_encoder
+    sys.modules.setdefault("srcRL", types.ModuleType("srcRL"))
+    sys.modules.setdefault("srcRL.InterfaceEncoder", interface_encoder)
+    return PPO.load(path, device=device)
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="ppo_archaeological_aligner.zip")
-    parser.add_argument("--vecnorm", default="ppo_archaeological_aligner_vecnormalize.pkl")
+    parser.add_argument("--model", default="RL_attempt/checkpoints/ppo_incastro_300000_steps.zip")
+    parser.add_argument("--vecnorm", default="RL_attempt/checkpoints/ppo_incastro_vecnormalize_300000_steps.pkl")
     parser.add_argument("--roll-step", type=float, default=45.0,
                         help="passo in gradi tra i roll provati (45 = gli stessi roll dell'addestramento)")
     parser.add_argument("--max-steps", type=int, default=500)
     parser.add_argument("--rolls", default=None,
                         help="elenco di roll separati da virgola (es. 270 oppure 0,45,90); sostituisce --roll-step")
-    parser.add_argument("--out", default="output_3d/infer_best.ply")
+    parser.add_argument("--out", default="results/infer_best.ply")
     parser.add_argument("--confronta-gt", action="store_true", help="stampa la distanza dalla GT a fine esecuzione")
     parser.add_argument("--episodi-per-roll", type=int, default=1,
                         help="episodi per ogni roll; con piu' di 1 la policy e' stocastica (come in training) "
@@ -113,12 +109,14 @@ def main():
                         help="parte dalle pose di search_start.py invece che dai roll")
     parser.add_argument("--ranks", default="0",
                         help="con --searched: pose della classifica da provare, separate da virgola (es. 0,1,2)")
-    parser.add_argument("--start-poses", default=os.path.join("runs", "start_search", "start_poses.npz"))
+    parser.add_argument("--start-poses", default="results/runs1/start_search/start_poses.npz")
+    parser.add_argument("--processed", default="examples/data1/processed",
+                        help="cartella dei .pt (e di occupancy/) della coppia di ossa")
     args = parser.parse_args()
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    dataset = BoneFragmentsDataset(processed_dir="data/processed")
-    model = PPO.load(args.model, device=device)
+    dataset = BoneFragmentsDataset(processed_dir=args.processed)
+    model = load_ppo(args.model, device)
 
     # L'osservazione deve essere quella con cui il modello e' stato addestrato
     obs_mode = "interface" if hasattr(model.observation_space, "spaces") else "geom"
@@ -143,7 +141,7 @@ def main():
         vecnorm.training = False
         vecnorm.norm_reward = False
     else:
-        print(f"⚠️ Statistiche VecNormalize non trovate ({args.vecnorm}): osservazioni non normalizzate.")
+        print(f"Statistiche VecNormalize non trovate ({args.vecnorm}): osservazioni non normalizzate.")
 
     results = []
     print(f"Modello: {args.model} ({obs_mode})  |  "
@@ -183,8 +181,14 @@ def main():
     print(f"   Salvata in {args.out}")
 
     if args.confronta_gt:
-        err, angle = gt_distance(env, dataset, pose)
-        print(f"   [verifica] distanza dalla GT calibrata: {err:.1f} mm, {angle:.1f} gradi")
+        from search_start import _carica_gt, _distanza_gt
+        gt, gt_path = _carica_gt(args.processed)
+        if gt is None:
+            print(f"   [verifica] GT non trovata ({gt_path})")
+        else:
+            media, centroidi, angolo = _distanza_gt(pose, gt)
+            print(f"   [verifica] distanza dalla GT: media {media:.1f} mm, centroidi {centroidi:.1f} mm, "
+                  f"angolo {angolo:.1f} gradi")
 
 
 if __name__ == "__main__":

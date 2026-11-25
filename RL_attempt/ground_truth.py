@@ -214,10 +214,10 @@ def mask_overlap(mask_static, mask_gt):
 # 2. ESECUZIONE
 # -------------------------------------------------------------------------
 if __name__ == "__main__":
-    from dataset import BoneFragmentsDataset
+    from src.dataset import BoneFragmentsDataset
 
     dataset = BoneFragmentsDataset(
-        processed_dir="data/processed", num_samples=2000
+        processed_dir="examples/data1/processed", num_samples=2000
     )
     frag_a_full, frag_b_full, _ = dataset[0]
 

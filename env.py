@@ -37,7 +37,7 @@ class ArchaeologicalIncastroEnv(gym.Env):
 
     def __init__(self, dataset, encoder=None, max_steps=120, max_allowed_chamfer=100.0,
                  obs_mode="interface", n_iface_points=128, device=None,
-                 occupancy_dir="data3/processed/occupancy", shaping_gamma=1.0,
+                 occupancy_dir=None, shaping_gamma=1.0,
                  start_mode="tip_aligned", start_rolls=None, start_face=None,
                  start_poses=None, start_rank=0):
         super(ArchaeologicalIncastroEnv, self).__init__()
@@ -53,7 +53,7 @@ class ArchaeologicalIncastroEnv(gym.Env):
             self.encoder.eval()
         self.obs_mode = obs_mode
         self.n_iface_points = n_iface_points
-        self.occupancy_dir = occupancy_dir
+        self.occupancy_dir = occupancy_dir if occupancy_dir is not None else os.path.join(dataset.processed_dir, "occupancy")
         self.shaping_gamma = shaping_gamma
 
         # Posa di partenza di B a ogni reset (nessuna delle due usa la GT):
@@ -526,7 +526,7 @@ class ArchaeologicalIncastroEnv(gym.Env):
             if not os.path.exists(path):
                 raise FileNotFoundError(
                     f"Griglia di occupazione mancante: {path}. "
-                    f"Generala con: python -m srcRL.occupancy"
+                    f"Generala con: python -m src.occupancy"
                 )
             self._occupancy_cache[stem] = OccupancyGrid.load(path, device=self.device)
         return self._occupancy_cache[stem]

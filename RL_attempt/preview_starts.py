@@ -25,9 +25,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--roll", type=float, default=0.0)
     parser.add_argument("--out-dir", default="output_3d")
+    parser.add_argument("--processed", default="examples/data1/processed")
     args = parser.parse_args()
 
-    env = ArchaeologicalIncastroEnv(BoneFragmentsDataset("data/processed"), start_mode="cube")
+    env = ArchaeologicalIncastroEnv(BoneFragmentsDataset(args.processed), start_mode="cube")
     env.START_MAX_TILT = 0.0
     env.START_MAX_AXIAL_SHIFT = 0.0
     os.makedirs(args.out_dir, exist_ok=True)
