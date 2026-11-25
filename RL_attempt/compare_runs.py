@@ -24,7 +24,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 
 from env import ArchaeologicalIncastroEnv
-from infer_rl import gt_distance, run_from_roll, save_ply
+from RL_attempt.infer_rl import gt_distance, run_from_roll, save_ply
 from src.dataset import BoneFragmentsDataset
 from RL_attempt.trainRL import load_start_poses
 

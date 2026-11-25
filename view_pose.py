@@ -44,15 +44,19 @@ def pose_clouds(poses_path, rank, processed_dir="examples/data/processed"):
         raise SystemExit(f"rank {rank} non presente: il file contiene {len(data['phi'])} pose")
     R, t = data["R"][rank], data["t"][rank]
 
-    dataset = BoneFragmentsDataset(processed_dir=processed_dir) #cambia numero data per vedere un altro esempio d'incastro
-    a_full, b_full, _ = dataset[0]
-    a = (a_full.x if hasattr(a_full, "x") else a_full).numpy()
-    b = (b_full.x if hasattr(b_full, "x") else b_full).numpy()
-    pts_a, pts_b = a[:, :3] * SCALE, b[:, :3] * SCALE
-    mask_a = a[:, 7] > 0.5 if a.shape[1] > 7 else np.zeros(len(a), dtype=bool)
-    mask_b = b[:, 7] > 0.5 if b.shape[1] > 7 else np.zeros(len(b), dtype=bool)
+    if "frag_a" in data.files:
+        pts_a, pts_b = data["frag_a"], data["frag_b_rest"]
+        mask_a, mask_b = data["mask_a"].astype(bool), data["mask_b"].astype(bool)
+    else:
+        dataset = BoneFragmentsDataset(processed_dir=processed_dir) #cambia numero data per vedere un altro esempio d'incastro
+        a_full, b_full, _ = dataset[0]
+        a = (a_full.x if hasattr(a_full, "x") else a_full).numpy()
+        b = (b_full.x if hasattr(b_full, "x") else b_full).numpy()
+        pts_a, pts_b = a[:, :3] * SCALE, b[:, :3] * SCALE
+        mask_a = a[:, 7] > 0.5 if a.shape[1] > 7 else np.zeros(len(a), dtype=bool)
+        mask_b = b[:, 7] > 0.5 if b.shape[1] > 7 else np.zeros(len(b), dtype=bool)
 
-    pts_b = pts_b @ R.T + t
+        pts_b = pts_b @ R.T + t
 
     extra = ""
     if "roll" in data.files:
@@ -70,13 +74,14 @@ def main():
     args = parser.parse_args()
 
 
-    poses = os.path.join(f"results/runs{args.runs}", "start_search", "start_poses.npz")
+    folder = f"results/runs{args.runs}" if args.runs.isdigit() else args.runs
+    poses = os.path.join(folder, "start_search", "start_poses.npz")
     if args.processed == None:
         processed = os.path.join(f"examples/data{args.runs}", "processed")
     else:
         processed = os.path.join(f"examples/data{args.processed}", "processed")
     if not os.path.exists(poses):
-        raise SystemExit(f"{args.poses} non trovato: lancia prima python search_start.py")
+        raise SystemExit(f"{poses} non trovato: lancia prima python search_start.py")
     geometries, title = pose_clouds(poses, args.rank, processed)
 
     vis = o3d.visualization.Visualizer()

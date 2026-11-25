@@ -17,8 +17,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from env import ArchaeologicalIncastroEnv
-from infer_rl import save_ply
-from srcRL.dataset import BoneFragmentsDataset
+from RL_attempt.infer_rl import save_ply
+from src.dataset import BoneFragmentsDataset
 
 
 def main():

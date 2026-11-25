@@ -210,12 +210,15 @@ def extract_fracture_mask(points, normals, boundary_vertices=None):
         return mask.astype(np.float32), curvature
 
     seed_idx = candidate_idx[np.isin(labels, valid_clusters)]
+    max_allowed = int(N * MAX_FRACTURE_RATIO)
+    if len(seed_idx) > max_allowed:
+        # i semi da soli superano il tetto: si tengono quelli con lo score piu' alto
+        seed_idx = seed_idx[np.argsort(-score[seed_idx])[:max_allowed]]
     mask[seed_idx] = True
 
     tree_pts = KDTree(points)
     queue = list(seed_idx)
     growth_threshold = np.percentile(score, GROWTH_PERCENTILE)
-    max_allowed = int(N * MAX_FRACTURE_RATIO)
 
     while queue and mask.sum() < max_allowed:
         curr = queue.pop(0)
@@ -255,6 +258,7 @@ def load_fragment(obj_path, num_points=NUM_POINTS):
             mesh.compute_vertex_normals()
             print(f"  mesh chiusa: tolti {int(piccoli.sum())} pezzi staccati ({int(counts[piccoli].sum())} triangoli)")
 
+    o3d.utility.random.seed(0)
     pcd = mesh.sample_points_poisson_disk(number_of_points=num_points)
     pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamKNN(knn=30))
     pcd.orient_normals_consistent_tangent_plane(50)

@@ -183,6 +183,8 @@ def main():
     parser.add_argument("--processed", default="examples/data1/processed",
                         help="cartella dei .pt (e di occupancy/) della coppia di ossa")
     parser.add_argument("--out", default="results/runs", help="cartella dei risultati: le pose vanno in <out>/start_search/")
+    parser.add_argument("--confronta-gt", action="store_true",
+                        help="a fine esecuzione stampa la distanza dalla GT (solo verifica, non influenza la scelta)")
     args = parser.parse_args()
 
     offsets = [float(o) for o in args.offsets.split(",")]
@@ -227,7 +229,7 @@ def main():
              mask_a=_env.fracture_mask_a.numpy(), mask_b=_env.fracture_mask_b.numpy(),
              pair=np.array([file_a, file_b]))
 
-    from infer_rl import save_ply
+    from RL_attempt.infer_rl import save_ply
     print("\nClassifica per Phi (nessuna GT nella scelta):")
     for rank, r in enumerate(results[:5]):
         m = r["metrics"]
@@ -240,7 +242,7 @@ def main():
           f"Visualizzazione: python view_pose.py --runs {args.out}")
 
     if args.confronta_gt:
-        from infer_rl import gt_distance
+        from RL_attempt.infer_rl import gt_distance
         print("\n[verifica a posteriori] distanza dalla GT:")
         for rank, r in enumerate(results[:5]):
             err, angle = gt_distance(_env, _env.dataset, r["pose"])
