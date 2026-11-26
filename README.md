@@ -78,18 +78,10 @@ Il campionamento dei punti nel preprocessing ha il seed fisso, quindi rifacendo 
 
 Le ground truth le ho fatte a mano con CloudCompare, quindi sono approssimate. Il confronto si fa solo alla fine e non influisce sulla scelta della posa.
 
-Per la coppia 1:
-
 ```
-python -m src.gt_check --crea-coppia1
 python search_start.py --processed examples/data1/processed --out results/runs1 --confronta-gt
 ```
 
-Per le altre coppie bisogna salvare da CloudCompare le due mesh già incastrate e poi:
-
-```
-python -m src.gt_check --data 2 --a-gt A_incastrato.ply --b-gt B_incastrato.ply
-```
 
 ## Parte di Reinforcement Learning
 

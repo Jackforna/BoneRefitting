@@ -56,7 +56,7 @@ def pose_clouds(poses_path, rank, processed_dir="examples/data/processed"):
         mask_a = a[:, 7] > 0.5 if a.shape[1] > 7 else np.zeros(len(a), dtype=bool)
         mask_b = b[:, 7] > 0.5 if b.shape[1] > 7 else np.zeros(len(b), dtype=bool)
 
-        pts_b = pts_b @ R.T + t
+    pts_b = pts_b @ R.T + t
 
     extra = ""
     if "roll" in data.files:
